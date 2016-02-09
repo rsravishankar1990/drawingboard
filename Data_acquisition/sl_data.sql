@@ -23,7 +23,12 @@ select
 			else B.replacement
 			end as replacement,
 			
-		C.accessory
+		C.accessory,
+		case
+			when D.low_nps is null then 0
+			else D.low_nps
+		end as low_nps
+		
 		
 		--Table B: Device switch and Device upgrade information
 		--Device switch: Has customer used multiple devices in the past? - can this come from customer_history?
@@ -186,6 +191,33 @@ group by sl_uuid
 
 ) as C
 on C.sl_uuid = A.sl_uuid
+
+left join
+
+
+(
+select a.sl_uuid, a.email, b.*
+from 
+(
+select email, time_stamp::date as nps_date,
+case
+when score <= 2 then 1
+else 0
+end as low_nps,
+score
+from nps
+where time_stamp between '%WINDOW_START_DATE%'::date - 180 and '%WINDOW_START_DATE%'::date
+) as b
+right join
+customer_history as a
+on a.email = b.email
+where a.etl_date = '%WINDOW_START_DATE%' and a.sl_status = 'Activated'
+
+) as D
+on D.sl_uuid = A.sl_uuid
+
+
+
 
 
 order by customer_life
