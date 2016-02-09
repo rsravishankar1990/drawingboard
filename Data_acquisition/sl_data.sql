@@ -21,7 +21,9 @@ select
 		case
 			when B.replacement is null then 0
 			else B.replacement
-			end as replacement
+			end as replacement,
+			
+		C.accessory
 		
 		--Table B: Device switch and Device upgrade information
 		--Device switch: Has customer used multiple devices in the past? - can this come from customer_history?
@@ -123,7 +125,7 @@ from(
 		customer_history as a
 	left join
 		(
-			  select A.sl_uuid, A.type, A.time_stamp::darte as date, B.name, A.product_sku, B.model, B.category
+			  select A.sl_uuid, A.type, A.time_stamp::date as date, B.name, A.product_sku, B.model, B.category
 			  from salesforce_transaction_items as A
 			  left join
 			  sku_dictionary as B
@@ -141,4 +143,49 @@ group by sl_uuid
 ) as B
 	
 on A.sl_uuid = B.sl_uuid	
+
+--Table C : accessory purchase
+--From salesforce_transaction_items : model - accessory 
+--use account_crm to join
+left join
+
+
+
+(
+select sl_uuid, sum(accessory) as accessory
+from(
+	select 
+			a.sl_uuid,a.account_crm,
+			b.type as device_trans_type,
+			b.date as device_date,
+			b.name as acc_name,
+			b.model as trans_model,
+			b.category as trans_category,
+			case when b.name is not null then 1
+			else 0
+			end as accessory
+
+	from
+		customer_history as a
+	left join
+		(
+			  select A.sl_uuid, A.account_crm, A.type, A.time_stamp::date as date, B.name, A.product_sku, B.model, B.category
+			  from salesforce_transaction_items as A
+			  left join
+			  sku_dictionary as B
+			  on A.product_sku = B.sku
+			  where B.model = 'accessory' and A.time_stamp between '%WINDOW_START_DATE%'::date - 180 and '%WINDOW_START_DATE%'::date
+			  order by account_crm, date
+		
+		) AS b
+		
+	on a.account_crm = b.account_crm
+	where a.etl_date = '%WINDOW_START_DATE%' and a.sl_status = 'Activated'
+	)
+group by sl_uuid
+
+) as C
+on C.sl_uuid = A.sl_uuid
+
+
 order by customer_life
