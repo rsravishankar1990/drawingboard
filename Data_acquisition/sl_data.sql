@@ -123,7 +123,7 @@ from(
 		customer_history as a
 	left join
 		(
-			  select A.sl_uuid, A.type, A.time_stamp::date as date, B.name, A.product_sku, B.model, B.category
+			  select A.sl_uuid, A.type, A.time_stamp::darte as date, B.name, A.product_sku, B.model, B.category
 			  from salesforce_transaction_items as A
 			  left join
 			  sku_dictionary as B
